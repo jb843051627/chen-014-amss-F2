@@ -36,9 +36,9 @@ public class TAmssPassBill implements Serializable {
     @ApiModelProperty(value = "跨区作业证核准单号")
     private String billNo;
 
-    /** 当前所在层 0..3 */
+    /** 当前所在层 0受理 1核验 2复核 3用章 */
     @TableField("node_no")
-    @ApiModelProperty(value = "当前所在层 0..3")
+    @ApiModelProperty(value = "当前所在层 0受理 1核验 2复核 3用章")
     private Integer nodeNo;
 
     /** 同层核准办法 0任一人 1两名点齐 */
@@ -46,19 +46,86 @@ public class TAmssPassBill implements Serializable {
     @ApiModelProperty(value = "同层核准办法 0任一人 1两名点齐")
     private Integer signMode;
 
-    /** 本层应签人数 */
+    /** 本层应签人数（随层配置，不由页面填） */
     @TableField("need_count")
-    @ApiModelProperty(value = "本层应签人数")
+    @ApiModelProperty(value = "本层应签人数（随层配置，不由页面填）")
     private Integer needCount;
 
-    /** 本层已签人数 */
+    /** 本层已签人数（一律由签字流水回算后写回） */
     @TableField("sign_count")
-    @ApiModelProperty(value = "本层已签人数")
+    @ApiModelProperty(value = "本层已签人数（一律由签字流水回算后写回）")
     private Integer signCount;
 
-    /** 报批情形 0在核 1已核讫 2已打回 */
+    /** 机主姓名（受理四要件之一） */
+    @TableField("owner_name")
+    @ApiModelProperty(value = "机主姓名（受理四要件之一）")
+    private String ownerName;
+
+    /** 准驾代号类别（受理四要件之一） */
+    @TableField("drive_code")
+    @ApiModelProperty(value = "准驾代号类别（受理四要件之一）")
+    private String driveCode;
+
+    /** 本机在册牌证字号（受理四要件之一，核验只对字号） */
+    @TableField("plate_no")
+    @ApiModelProperty(value = "本机在册牌证字号（受理四要件之一，核验只对字号）")
+    private String plateNo;
+
+    /** 拟出证文（受理四要件之一） */
+    @TableField("cert_text")
+    @ApiModelProperty(value = "拟出证文（受理四要件之一）")
+    private String certText;
+
+    /** 作业合同指向的目的地省（随证文外发） */
+    @TableField("dest_province")
+    @ApiModelProperty(value = "作业合同指向的目的地省（随证文外发）")
+    private String destProvince;
+
+    /** 作业证起日（随证文外发） */
+    @TableField("valid_from")
+    @JsonFormat(pattern = "yyyy-MM-dd", timezone = "GMT+8")
+    @ApiModelProperty(value = "作业证起日（随证文外发）")
+    private Date validFrom;
+
+    /** 作业证讫日（随证文外发） */
+    @TableField("valid_to")
+    @JsonFormat(pattern = "yyyy-MM-dd", timezone = "GMT+8")
+    @ApiModelProperty(value = "作业证讫日（随证文外发）")
+    private Date validTo;
+
+    /** 申报的跨区作业队在队名册卡号 */
+    @TableField("team_card_no")
+    @ApiModelProperty(value = "申报的跨区作业队在队名册卡号")
+    private String teamCardNo;
+
+    /** 申领年度（年检口径与当年重复抄发拦截） */
+    @TableField("issue_year")
+    @ApiModelProperty(value = "申领年度（年检口径与当年重复抄发拦截）")
+    private Integer issueYear;
+
+    /** 核准轮次 首轮1，市局每打回一次加一（勾销与后补不同轮，不摆在一处） */
+    @TableField("round_no")
+    @ApiModelProperty(value = "核准轮次 首轮1，市局每打回一次加一")
+    private Integer roundNo;
+
+    /** 核验压死标记 0正常 1年检未做或未过一次压死再齐也走不动 */
+    @TableField("inspect_block")
+    @ApiModelProperty(value = "核验压死标记 0正常 1年检未做或未过一次压死再齐也走不动")
+    private Integer inspectBlock;
+
+    /** 是否已落本站公章 0未盖 1已落（落后各栏封死） */
+    @TableField("sealed")
+    @ApiModelProperty(value = "是否已落本站公章 0未盖 1已落（落后各栏封死）")
+    private Integer sealed;
+
+    /** 已转对外证文号（空即尚未出证） */
+    @TableField("cert_no")
+    @ApiModelProperty(value = "已转对外证文号（空即尚未出证）")
+    private String certNo;
+
+    /** 报批情形 0在核 1已核讫 2已打回 3不予出证(终局) */
     @TableField("status")
-    @ApiModelProperty(value = "报批情形 0在核 1已核讫 2已打回")
+    @ApiModelProperty(value = "报批情形 0在核 1已核讫 2已打回 3不予出证(终局)")
     private Integer status;
 
     /** 删除标记 0正常 1删除 */
@@ -139,6 +206,110 @@ public class TAmssPassBill implements Serializable {
 
     public void setSignCount(Integer signCount) {
         this.signCount = signCount;
+    }
+
+    public String getOwnerName() {
+        return ownerName;
+    }
+
+    public void setOwnerName(String ownerName) {
+        this.ownerName = ownerName;
+    }
+
+    public String getDriveCode() {
+        return driveCode;
+    }
+
+    public void setDriveCode(String driveCode) {
+        this.driveCode = driveCode;
+    }
+
+    public String getPlateNo() {
+        return plateNo;
+    }
+
+    public void setPlateNo(String plateNo) {
+        this.plateNo = plateNo;
+    }
+
+    public String getCertText() {
+        return certText;
+    }
+
+    public void setCertText(String certText) {
+        this.certText = certText;
+    }
+
+    public String getDestProvince() {
+        return destProvince;
+    }
+
+    public void setDestProvince(String destProvince) {
+        this.destProvince = destProvince;
+    }
+
+    public Date getValidFrom() {
+        return validFrom;
+    }
+
+    public void setValidFrom(Date validFrom) {
+        this.validFrom = validFrom;
+    }
+
+    public Date getValidTo() {
+        return validTo;
+    }
+
+    public void setValidTo(Date validTo) {
+        this.validTo = validTo;
+    }
+
+    public String getTeamCardNo() {
+        return teamCardNo;
+    }
+
+    public void setTeamCardNo(String teamCardNo) {
+        this.teamCardNo = teamCardNo;
+    }
+
+    public Integer getIssueYear() {
+        return issueYear;
+    }
+
+    public void setIssueYear(Integer issueYear) {
+        this.issueYear = issueYear;
+    }
+
+    public Integer getRoundNo() {
+        return roundNo;
+    }
+
+    public void setRoundNo(Integer roundNo) {
+        this.roundNo = roundNo;
+    }
+
+    public Integer getInspectBlock() {
+        return inspectBlock;
+    }
+
+    public void setInspectBlock(Integer inspectBlock) {
+        this.inspectBlock = inspectBlock;
+    }
+
+    public Integer getSealed() {
+        return sealed;
+    }
+
+    public void setSealed(Integer sealed) {
+        this.sealed = sealed;
+    }
+
+    public String getCertNo() {
+        return certNo;
+    }
+
+    public void setCertNo(String certNo) {
+        this.certNo = certNo;
     }
 
     public Integer getStatus() {

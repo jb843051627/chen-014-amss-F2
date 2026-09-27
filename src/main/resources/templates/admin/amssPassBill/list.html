@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:include="include :: header('跨区作业证逐级核准台账')"/>
+</head>
+<body class="pear-container">
+<div class="layui-card">
+    <div class="layui-card-body">
+        <form class="layui-form" action="">
+            <div class="layui-form-item">
+                <label class="layui-form-label">核准单号</label>
+                <div class="layui-input-inline">
+                    <input type="text" name="billNo" class="layui-input">
+                </div>
+                <label class="layui-form-label">牌证字号</label>
+                <div class="layui-input-inline">
+                    <input type="text" name="plateNo" class="layui-input">
+                </div>
+                <label class="layui-form-label">情形</label>
+                <div class="layui-input-inline">
+                    <select name="status" class="layui-input">
+                        <option value="">全部</option>
+                        <option value="0">在核</option>
+                        <option value="1">已核讫</option>
+                        <option value="3">不予出证</option>
+                    </select>
+                </div>
+                <button class="pear-btn pear-btn-md pear-btn-primary" lay-submit lay-filter="passbill-query">
+                    <i class="layui-icon layui-icon-search"></i> 查询
+                </button>
+                <button type="reset" class="pear-btn pear-btn-md">
+                    <i class="layui-icon layui-icon-refresh"></i> 重置
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="layui-card">
+    <div class="layui-card-body">
+        <table id="passbill-table" lay-filter="passbill-table"></table>
+    </div>
+</div>
+</body>
+
+<script type="text/html" id="passbill-toolbar">
+    <button shiro:hasPermission="amssPassBill:receive" class="pear-btn pear-btn-primary pear-btn-md" lay-event="receive">
+        <i class="layui-icon layui-icon-add-1"></i> 收件受理（现行跨区作业证申领表）
+    </button>
+</script>
+
+<script type="text/html" id="passbill-bar">
+    <button shiro:hasPermission="amssPassBill:view" class="pear-btn pear-btn-primary pear-btn-sm" lay-event="detail">
+        <i class="layui-icon layui-icon-form"></i> 翻开办理
+    </button>
+    {{# if(d.status==1){ }}
+    <button shiro:hasPermission="amssPassBill:view" class="pear-btn pear-btn-normal pear-btn-sm" lay-event="cert">
+        <i class="layui-icon layui-icon-vercode"></i> 对外证文
+    </button>
+    {{# } }}
+</script>
+
+<script type="text/html" id="passbill-node">
+    {{# var nms=['受理','核验','复核','用章']; }}
+    {{# if(d.status==3){ }}<span style="color:#f56c6c;">不予出证（止于{{#=nms[d.nodeNo]}}关）</span>
+    {{# } else if(d.status==1){ }}<span style="color:#5fb878;">已核讫·{{#=nms[d.nodeNo]}}关落章</span>
+    {{# } else { }}{{#=nms[d.nodeNo]}}关（第{{#=d.roundNo}}轮，{{#=d.signCount}}/{{#=d.needCount}}手）{{# } }}
+</script>
+
+<th:block th:include="include :: footer"/>
+<script>
+    layui.use(['table', 'form', 'jquery'], function () {
+        let table = layui.table;
+        let form = layui.form;
+        let $ = layui.jquery;
+        let MODULE_PATH = rootPath + "/amssPassBill/";
+
+        table.render({
+            elem: '#passbill-table',
+            url: MODULE_PATH + 'list',
+            page: true,
+            method: 'get',
+            skin: 'line',
+            toolbar: '#passbill-toolbar',
+            cols: [[
+                {title: '核准单号', field: 'billNo', align: 'center', width: 160},
+                {title: '机主', field: 'ownerName', align: 'center', width: 110},
+                {title: '在册牌证字号', field: 'plateNo', align: 'center', width: 150},
+                {title: '准驾代号', field: 'driveCode', align: 'center', width: 90},
+                {title: '目的地省', field: 'destProvince', align: 'center', width: 100},
+                {title: '年度', field: 'issueYear', align: 'center', width: 70},
+                {title: '当前关口/进度', templet: '#passbill-node', align: 'center', minWidth: 220},
+                {title: '证文号', field: 'certNo', align: 'center', width: 150},
+                {title: '操作', toolbar: '#passbill-bar', align: 'center', width: 210, fixed: 'right'}
+            ]]
+        });
+
+        table.on('tool(passbill-table)', function (obj) {
+            if (obj.event === 'detail') {
+                layer.open({type: 2, title: '核准单 ' + obj.data.billNo + ' 经办一屏', shade: 0.1, area: ['960px', '680px'],
+                    content: MODULE_PATH + 'detail/' + obj.data.id});
+            } else if (obj.event === 'cert') {
+                layer.open({type: 2, title: '跨区作业证（对外证文）', shade: 0.1, area: ['760px', '620px'],
+                    content: MODULE_PATH + 'cert/' + obj.data.id});
+            }
+        });
+
+        table.on('toolbar(passbill-table)', function (obj) {
+            if (obj.event === 'receive') {
+                layer.open({type: 2, title: '跨区作业证申领表', shade: 0.1, area: ['720px', '640px'],
+                    content: MODULE_PATH + 'receivePage'});
+            }
+        });
+
+        form.on('submit(passbill-query)', function (data) {
+            table.reload('passbill-table', {where: data.field, page: {curr: 1}});
+            return false;
+        });
+    });
+</script>
+</html>

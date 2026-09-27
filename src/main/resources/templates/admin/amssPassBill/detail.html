@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:include="include :: header('核准单经办一屏')"/>
+    <style>
+        .gate-row {display:flex; gap:8px; margin:12px 0;}
+        .gate-box {flex:1; text-align:center; padding:10px 6px; border:1px solid #e2e2e2; border-radius:4px; background:#fafafa;}
+        .gate-box.cur {border-color:#1e9fff; background:#eaf4ff; font-weight:bold;}
+        .gate-box.done {background:#f0f9eb; border-color:#95d475;}
+        .gate-box.stop {background:#fef0f0; border-color:#f56c6c;}
+        .sign-li {padding:4px 0; border-bottom:1px dashed #eee;}
+        .void-row {color:#999; text-decoration:line-through;}
+        .kv {margin-right:18px;}
+    </style>
+</head>
+<body class="pear-container" style="padding:12px;">
+<div class="layui-card">
+    <div class="layui-card-body">
+        <h3 id="bill-title" style="margin:0 0 8px;"></h3>
+        <div id="bill-kv" style="line-height:28px;"></div>
+        <div id="gate-row" class="gate-row"></div>
+        <div id="missing-tip" style="margin:6px 0 12px;"></div>
+        <div id="actions" style="margin-bottom:12px;"></div>
+
+        <fieldset class="layui-elem-field">
+            <legend>各道落过的名目（与当日经办一屏同出一回计算，事后往回捋以此对号）</legend>
+            <div class="layui-card-body">
+                <div>本核准轮在账：</div>
+                <div id="sign-list"></div>
+                <div style="margin-top:8px;">历轮被勾销名目（勾掉的与后补的不摆在一处）：</div>
+                <div id="void-list"><span class="layui-badge-rim">无</span></div>
+            </div>
+        </fieldset>
+    </div>
+</div>
+
+<th:block th:include="include :: footer"/>
+<script th:inline="javascript">
+    let BILL_ID = [[${billId}]];
+    let MODULE_PATH = rootPath + "/amssPassBill";
+    layui.use(['jquery', 'layer'], function () {
+        let $ = layui.jquery;
+
+        function fmtDate(v) {
+            if (!v) return '';
+            return String(v).substring(0, 10);
+        }
+
+        function load() {
+            // 压在哪一道、还差几双手，全凭服务方法返回摆上屏幕，本页不先摆关口再凑数
+            $.getJSON(MODULE_PATH + '/detail/data/' + BILL_ID, function (res) {
+                if (res.code !== 200) { layer.msg(res.msg, {icon: 2}); return; }
+                render(res.data);
+            });
+        }
+
+        function render(v) {
+            let b = v.bill;
+            $('#bill-title').text('核准单 ' + b.billNo + '（' + b.issueYear + ' 年度）');
+            $('#bill-kv').html(
+                '<span class="kv"><b>机主：</b>' + b.ownerName + '</span>' +
+                '<span class="kv"><b>准驾代号：</b>' + b.driveCode + '</span>' +
+                '<span class="kv"><b>在册牌证字号：</b>' + b.plateNo + '</span>' +
+                '<span class="kv"><b>目的地省：</b>' + (b.destProvince || '') + '</span>' +
+                '<span class="kv"><b>起讫：</b>' + fmtDate(b.validFrom) + ' 至 ' + fmtDate(b.validTo) + '</span>' +
+                '<span class="kv"><b>在队名册卡号：</b>' + (b.teamCardNo || '') + '</span>' +
+                '<div><b>拟出证文：</b>' + b.certText + '</div>'
+            );
+
+            let names = ['受理', '核验', '复核', '用章'];
+            let node = b.nodeNo, status = b.status;
+            let html = '';
+            for (let i = 0; i < 4; i++) {
+                let cls = 'gate-box';
+                let tail = '';
+                if (status === 3 && i === node) { cls += ' stop'; tail = '·不予出证'; }
+                else if (status === 1 && i === 3) { cls += ' done'; tail = '·已落章'; }
+                else if (i < node) { cls += ' done'; tail = '·已过'; }
+                else if (i === node) { cls += ' cur'; tail = '·当前'; }
+                let need = (i === node) ? ('<div>本关 ' + b.signCount + '/' + b.needCount + ' 手</div>') : '';
+                html += '<div class="' + cls + '">' + (i + 1) + '·' + names[i] + tail + need + '</div>';
+            }
+            $('#gate-row').html(html);
+
+            if (v.active) {
+                $('#missing-tip').html('<span class="layui-badge">当前在【' + v.nodeName + '】关，还差 ' +
+                    v.missingCount + ' 双手</span>' + (b.inspectBlock === 1 ?
+                    '　<span class="pear-text-danger">年检未做或未过，件已压死在核验关，再齐也走不动</span>' : ''));
+            } else {
+                $('#missing-tip').html('<span class="layui-badge layui-bg-gray">' + (v.terminalText || '已终局') + '</span>');
+            }
+
+            let acts = '';
+            if (v.active) {
+                if (node === 1) {
+                    acts += btn('approve', '核验通过（只对字号+年检合格）', 'normal');
+                }
+                if (node === 2) {
+                    acts += btn('approveSeat&seatNo=1', '名册合同位签（在队名册+合同指向省）', 'normal');
+                    acts += btn('approveSeat&seatNo=2', '牌证证文合龙位签（在册情况与证文合拢）', 'normal');
+                }
+                if (node === 3) {
+                    acts += btn('approve', '本站用章、报市局存一份', 'danger');
+                    acts += btn('rollback', '市局打回（名目勾销，从核验关重攒）', 'primary');
+                }
+                acts += btn('reject', '本关写下不予出证（终局）', 'warn');
+            }
+            if (b.sealed === 1 && status === 1 && !b.certNo) {
+                acts += btn('issue', '核准结论一键转对外证文', 'normal');
+            }
+            if (b.certNo) {
+                acts += '<a class="pear-btn pear-btn-success pear-btn-sm" href="javascript:;" onclick="openCert()">已出证：' + b.certNo + '（查看对外一页）</a>';
+            }
+            $('#actions').html(acts);
+
+            $('#sign-list').html(v.currentSigns.length ? v.currentSigns.map(function (s) {
+                return '<div class="sign-li">第' + s.roundNo + '轮·' + names[s.nodeNo] + '关·' + (s.seatName || '') +
+                    '　经手：<b>' + s.approver + '</b>　' + (s.opinion || '') +
+                    '　<span style="color:#999;">' + (s.createTime || '') + '</span></div>';
+            }).join('') : '<span class="layui-badge-rim">暂无</span>');
+            $('#void-list').html(v.voidedSigns.length ? v.voidedSigns.map(function (s) {
+                return '<div class="sign-li void-row">第' + s.roundNo + '轮·' + names[s.nodeNo] + '关·' + (s.seatName || '') +
+                    '　经手：' + s.approver + '（已勾销）</div>';
+            }).join('') : '<span class="layui-badge-rim">无</span>');
+        }
+
+        function btn(actionAndData, label, color) {
+            let parts = actionAndData.split('&');
+            let action = parts[0], extra = parts[1] || '';
+            return '<button class="pear-btn pear-btn-' + color + ' pear-btn-sm" style="margin:0 8px 8px 0;" ' +
+                'onclick="doAction(\'' + action + '\',\'' + extra + '\')">' + label + '</button>';
+        }
+
+        window.doAction = function (action, extra) {
+            layer.prompt({title: '判语（可留空）', formType: 2}, function (comment, idx) {
+                layer.close(idx);
+                let data = 'id=' + BILL_ID + '&comment=' + encodeURIComponent(comment) +
+                    (extra ? '&' + extra : '');
+                let loading = layer.load();
+                $.ajax({
+                    url: MODULE_PATH + '/' + action, data: data, type: 'post', dataType: 'json',
+                    success: function (r) {
+                        layer.close(loading);
+                        layer.msg(r.msg, {icon: r.code === 200 ? 1 : 2, time: 1400}, load);
+                    }
+                });
+            });
+        };
+        window.openCert = function () {
+            parent.layer.open({type: 2, title: '跨区作业证（对外证文）', shade: 0.1, area: ['760px', '620px'],
+                content: MODULE_PATH + '/cert/' + BILL_ID});
+        };
+        load();
+    });
+</script>
+</body>
+</html>

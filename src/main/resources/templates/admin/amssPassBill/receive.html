@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:include="include :: header('跨区作业证申领表')"/>
+</head>
+<body>
+<!-- 仍是现行那张跨区作业证申领表：受理四要件齐了才收件，另做一张不必 -->
+<form class="layui-form">
+    <div class="mainBox">
+        <div class="layui-form-item">
+            <label class="layui-form-label">机主姓名</label>
+            <div class="layui-input-block">
+                <input type="text" name="ownerName" autocomplete="off" placeholder="受理要件一：机主是谁" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">准驾代号</label>
+            <div class="layui-input-block">
+                <input type="text" name="driveCode" autocomplete="off" placeholder="受理要件二：准驾代号归哪一类" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">在册牌证字号</label>
+            <div class="layui-input-block">
+                <input type="text" name="plateNo" autocomplete="off" placeholder="受理要件三：这台机的在册牌证字号（核验只对此字号）" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">拟出证文</label>
+            <div class="layui-input-block">
+                <textarea name="certText" placeholder="受理要件四：证文打算怎么写（须含机主与牌证字号）" class="layui-textarea"></textarea>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">目的地省</label>
+            <div class="layui-input-inline">
+                <input type="text" name="destProvince" autocomplete="off" placeholder="作业合同指向哪个省" class="layui-input">
+            </div>
+            <label class="layui-form-label">在队名册卡号</label>
+            <div class="layui-input-inline">
+                <input type="text" name="teamCardNo" autocomplete="off" placeholder="如 JD2026001" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">作业起日</label>
+            <div class="layui-input-inline">
+                <input type="text" name="validFrom" id="validFrom" autocomplete="off" placeholder="yyyy-MM-dd" class="layui-input">
+            </div>
+            <label class="layui-form-label">作业讫日</label>
+            <div class="layui-input-inline">
+                <input type="text" name="validTo" id="validTo" autocomplete="off" placeholder="yyyy-MM-dd" class="layui-input">
+            </div>
+            <label class="layui-form-label">申领年度</label>
+            <div class="layui-input-inline">
+                <input type="number" name="issueYear" autocomplete="off" th:value="${#dates.year(#dates.createNow())}" class="layui-input">
+            </div>
+        </div>
+    </div>
+    <div class="bottom">
+        <div class="button-container">
+            <button type="submit" class="layui-btn layui-btn-normal layui-btn-sm" lay-submit lay-filter="passbill-receive">
+                <i class="layui-icon layui-icon-ok"></i> 递交受理
+            </button>
+            <button type="reset" class="layui-btn layui-btn-primary layui-btn-sm">
+                <i class="layui-icon layui-icon-refresh"></i> 重置
+            </button>
+        </div>
+    </div>
+</form>
+<th:block th:include="include :: footer"/>
+<script>
+    layui.use(['form', 'jquery', 'laydate'], function () {
+        let form = layui.form;
+        let $ = layui.jquery;
+        let laydate = layui.laydate;
+        let MODULE_PATH = rootPath + "/amssPassBill";
+        laydate.render({elem: '#validFrom'});
+        laydate.render({elem: '#validTo'});
+
+        form.on('submit(passbill-receive)', function (data) {
+            let f = data.field;
+            if (!f.ownerName || !f.driveCode || !f.plateNo || !f.certText) {
+                layer.msg("机主、准驾代号、在册牌证字号、拟出证文四样少一样，当场拦在门外", {icon: 2});
+                return false;
+            }
+            $.ajax({
+                url: MODULE_PATH + '/receive',
+                data: data.field,
+                dataType: 'json',
+                type: 'post',
+                success: function (result) {
+                    if (result.code == 200) {
+                        layer.msg(result.msg, {icon: 1, time: 1000}, function () {
+                            parent.layer.close(parent.layer.getFrameIndex(window.name));
+                            parent.layui.table.reload("passbill-table");
+                        });
+                    } else {
+                        layer.msg(result.msg, {icon: 2, time: 1800});
+                    }
+                }
+            });
+            return false;
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:include="include :: header('跨区作业证')"/>
+    <style>
+        .cert-paper {max-width: 640px; margin: 16px auto; padding: 32px 40px; border: 4px double #b53f37; border-radius: 6px;}
+        .cert-title {text-align:center; font-size: 26px; color:#b53f37; letter-spacing: 8px; font-weight:bold;}
+        .cert-sub {text-align:center; color:#666; margin:6px 0 20px;}
+        .cert-no {text-align:right; color:#333;}
+        .cert-line {line-height: 40px; font-size: 16px;}
+        .cert-dates {display:flex; justify-content:space-between; margin-top:18px;}
+        .cert-foot {margin-top: 28px; text-align:right; line-height:30px;}
+        .seal {display:inline-block; color:#d83931; border:2px solid #d83931; border-radius:50%;
+               width:120px; height:120px; line-height:120px; text-align:center; font-size:15px;
+               transform:rotate(-14deg); opacity:.85; margin-right:20px;}
+    </style>
+</head>
+<body>
+<div id="cert-box" class="cert-paper" style="display:none;">
+    <div class="cert-no">证号：<b id="cert-no"></b></div>
+    <div class="cert-title">跨区作业证</div>
+    <div class="cert-sub">（省级统一印制 · 本县免费发放 · 本站盖章有效 · 一机一证 · 随车携带）</div>
+    <div class="cert-line">机主：<b id="cert-owner"></b></div>
+    <div class="cert-line">联合收割机在册牌证字号：<b id="cert-plate"></b></div>
+    <div class="cert-line">持证农机具前往 <b id="cert-province"></b> 从事跨区机收作业。</div>
+    <div class="cert-dates">
+        <span>作业起日：<b id="cert-from"></b></span>
+        <span>作业讫日：<b id="cert-to"></b></span>
+    </div>
+    <div class="cert-line" id="cert-text" style="margin-top:12px;"></div>
+    <div class="cert-foot">
+        <div>发证年度：<span id="cert-year"></span></div>
+        <div>核准单号：<span id="cert-bill"></span></div>
+        <div style="margin-top:6px;"><span class="seal">临川县农机<br>监理站公章</span></div>
+    </div>
+</div>
+<div id="cert-empty" style="display:none; text-align:center; padding:60px; color:#999;">
+    这件四道尚未走满或未转证文，无对外证文可示。
+</div>
+<th:block th:include="include :: footer"/>
+<script th:inline="javascript">
+    let BILL_ID = [[${billId}]];
+    layui.use(['jquery', 'layer'], function () {
+        let $ = layui.jquery;
+        // 证文一页不另录任何字段：机主、牌证字号、目的省、起讫日子全从核准结论同一件带过
+        $.getJSON(rootPath + '/amssPassBill/detail/data/' + BILL_ID, function (res) {
+            if (res.code !== 200) { layer.msg(res.msg, {icon: 2}); return; }
+            let c = res.data.cert;
+            if (!c) { $('#cert-empty').show(); return; }
+            $('#cert-no').text(c.certNo);
+            $('#cert-owner').text(c.ownerName);
+            $('#cert-plate').text(c.plateNo);
+            $('#cert-province').text(c.destProvince);
+            $('#cert-from').text(c.validFrom ? String(c.validFrom).substring(0, 10) : '');
+            $('#cert-to').text(c.validTo ? String(c.validTo).substring(0, 10) : '');
+            $('#cert-text').text(c.certText);
+            $('#cert-year').text(c.issueYear);
+            $('#cert-bill').text(res.data.bill.billNo);
+            $('#cert-box').show();
+        });
+    });
+</script>
+</body>
+</html>
